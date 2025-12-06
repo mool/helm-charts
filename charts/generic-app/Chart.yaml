@@ -1,0 +1,9 @@
+apiVersion: v2
+name: generic-app
+description: A generic Helm chart for deploying applications in Kubernetes.
+type: application
+version: 0.1.0
+home: https://github.com/mool/helm-charts
+maintainers:
+  - name: Pablo Gutiérrez del Castillo
+    email: pablo@pgc.ar
