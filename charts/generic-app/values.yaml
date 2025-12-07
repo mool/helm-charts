@@ -24,7 +24,7 @@ serviceAccount:
   # Specifies whether a service account should be created
   create: true
   # Automatically mount a ServiceAccount's API credentials?
-  automount: true
+  automount: false
   # Annotations to add to the service account
   annotations: {}
   # The name of the service account to use.
@@ -38,16 +38,34 @@ podAnnotations: {}
 # For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 podLabels: {}
 
-podSecurityContext: {}
-  # fsGroup: 2000
+podSecurityContext:
+  # Run as non-root group
+  runAsGroup: 10001
+  runAsUser: 10001
+  runAsNonRoot: true
+  # Set file permissions
+  fsGroup: 10001
+  fsGroupChangePolicy: OnRootMismatch
+  # Use seccomp
+  seccompProfile:
+    type: RuntimeDefault
 
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
+securityContext:
+  # Drop all capabilities by default
+  capabilities:
+    drop:
+      - ALL
+  # Run as non-root user
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  # Read-only root filesystem
+  readOnlyRootFilesystem: true
+  # Prevent privilege escalation
+  allowPrivilegeEscalation: false
+  # Use seccomp
+  seccompProfile:
+    type: RuntimeDefault
 
 # This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
 service:
@@ -55,6 +73,9 @@ service:
   type: ClusterIP
   # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
   port: 80
+
+# Container port configuration
+containerPort: 8080
 
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
@@ -73,24 +94,31 @@ ingress:
   #    hosts:
   #      - chart-example.local
 
-resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+    # Prevent excessive storage usage
+    ephemeral-storage: 1Gi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+    ephemeral-storage: 1Gi
 
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe: {}
   # httpGet:
   #   path: /
   #   port: http
+  # initialDelaySeconds: 30
+  # periodSeconds: 10
+  # timeoutSeconds: 5
+  # failureThreshold: 30
 readinessProbe: {}
+  # httpGet:
+  #   path: /
+  #   port: http
+startupProbe: {}
   # httpGet:
   #   path: /
   #   port: http
@@ -165,3 +193,42 @@ serviceMonitor:
   #   - port: admin
   #     path: /admin/metrics
   #     interval: 60s
+
+# Network Policy configuration for enhanced security
+networkPolicy:
+  # Enable NetworkPolicy creation
+  enabled: false
+  # Policy types to enforce
+  policyTypes:
+    - Ingress
+    - Egress
+  # Ingress rules
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-controller
+      ports:
+        - protocol: TCP
+          port: 8080
+  # Egress rules
+  egress:
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow external HTTPS
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+
+# Pod Disruption Budget for high availability
+podDisruptionBudget:
+  # Enable PodDisruptionBudget creation
+  enabled: false
+  # Minimum number of pods that must remain available
+  minAvailable: 1
+  # Alternative: maximum number of pods that can be unavailable
+  # maxUnavailable: 1
