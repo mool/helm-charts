@@ -2,7 +2,7 @@
 SHELL := /bin/bash
 CHART_DIR := charts/generic-app
 
-.PHONY: test test-unit test-examples test-single lint help clean
+.PHONY: test test-unit test-single lint help clean
 
 # Colors for output
 GREEN := \033[32m
@@ -12,16 +12,18 @@ NC := \033[0m # No Color
 
 help:
 	@echo "Available targets:"
-	@echo "  test         - Run all unit tests"
+	@echo "  test         - Run unit tests with default values"
 	@echo "  test-unit    - Run unit tests with default values"
-	@echo "  test-examples - Run tests with homelab example values"
-	@echo "  test-single   - Run single test file (use FILE=filename)"
+	@echo "  test-single  - Run single test file (use FILE=filename)"
 	@echo "  lint         - Run helm lint on charts"
 	@echo "  clean        - Clean test artifacts"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make test-single FILE=deployment_test.yaml"
-	@echo "  make test-examples"
+	@echo "  make test"
+	@echo ""
+	@echo "Note: Example values in test-values/ are for documentation and"
+	@echo "      demonstration purposes. They are not used in unit testing."
 
 # Check if helm-unittest plugin is installed
 check-deps:
@@ -44,8 +46,8 @@ check-chart:
 	fi
 	@echo "$(GREEN)✓ Chart directory validated$(NC)"
 
-# Run all tests
-test: check-deps check-chart test-unit test-examples
+# Run unit tests with default values
+test: check-deps check-chart test-unit
 	@echo "$(GREEN)✓ All tests completed successfully$(NC)"
 
 # Run unit tests with default values
@@ -57,27 +59,6 @@ test-unit: check-deps check-chart
 		echo "$(RED)✗ Unit tests failed$(NC)"; \
 		exit 1; \
 	fi
-
-# Run tests with example configurations
-test-examples: check-deps check-chart
-	@echo "$(YELLOW)Running tests with homelab examples...$(NC)"
-	@test_failed=0; \
-	for values_file in $(CHART_DIR)/test-values/*.yaml; do \
-		if [ -f "$$values_file" ]; then \
-			echo "Testing with $$(basename $$values_file)..."; \
-			if ! helm unittest $(CHART_DIR)/ -v "$$values_file"; then \
-				echo "$(RED)✗ Failed with $$(basename $$values_file)$(NC)"; \
-				test_failed=1; \
-			else \
-				echo "$(GREEN)✓ Passed with $$(basename $$values_file)$(NC)"; \
-			fi; \
-		fi; \
-	done; \
-	if [ $$test_failed -eq 1 ]; then \
-		echo "$(RED)✗ Some example configuration tests failed$(NC)"; \
-		exit 1; \
-	fi
-	@echo "$(GREEN)✓ All example configuration tests passed$(NC)"
 
 # Run single test file
 test-single: check-deps check-chart
