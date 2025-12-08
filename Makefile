@@ -16,14 +16,10 @@ help:
 	@echo "  test-unit    - Run unit tests with default values"
 	@echo "  test-single  - Run single test file (use FILE=filename)"
 	@echo "  lint         - Run helm lint on charts"
-	@echo "  clean        - Clean test artifacts"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make test-single FILE=deployment_test.yaml"
 	@echo "  make test"
-	@echo ""
-	@echo "Note: Example values in test-values/ are for documentation and"
-	@echo "      demonstration purposes. They are not used in unit testing."
 
 # Check if helm-unittest plugin is installed
 check-deps:
@@ -82,10 +78,3 @@ lint:
 		printf "$(RED)✗ Linting failed$(NC)\n"; \
 		exit 1; \
 	fi
-
-# Clean test artifacts
-clean:
-	@printf "$(YELLOW)Cleaning test artifacts...$(NC)\n"
-	@find . -name "*.tmp" -delete 2>/dev/null || true
-	@find . -name "*.test" -delete 2>/dev/null || true
-	@printf "$(GREEN)✓ Cleanup completed$(NC)\n"
