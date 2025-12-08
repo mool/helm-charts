@@ -1,0 +1,101 @@
+# Monitoring-focused homelab application (like Grafana, Prometheus exporter, etc.)
+# Emphasizes observability features and ServiceMonitor configuration
+
+image:
+  repository: grafana/grafana
+  tag: "10.2.0"
+
+nameOverride: "monitoring-dashboard"
+
+service:
+  type: ClusterIP
+  port: 3000
+
+# Expose via ingress with monitoring domain
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/auth-type: "basic"
+    nginx.ingress.kubernetes.io/auth-secret: "basic-auth"
+  hosts:
+    - host: grafana.monitoring.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+# Moderate resources for monitoring workload
+resources:
+  limits:
+    cpu: 300m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+# Security context for monitoring tools
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 472  # Grafana user
+  fsGroup: 472
+  readOnlyRootFilesystem: true
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+
+# Configuration for monitoring
+configMap:
+  enabled: true
+  data:
+    GF_SECURITY_ADMIN_PASSWORD: "admin123"
+    GF_USERS_ALLOW_SIGN_UP: "false"
+    GF_ANALYTICS_REPORTING_ENABLED: "false"
+
+# Enable comprehensive ServiceMonitor configuration
+serviceMonitor:
+  enabled: true
+  labels:
+    release: prometheus
+    team: platform
+  annotations:
+    monitoring/scrape: "true"
+  portName: "http"
+  path: "/metrics"
+  interval: "30s"
+  scrapeTimeout: "10s"
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+
+# Single replica for homelab monitoring
+replicaCount: 1
+
+# Startup probe for monitoring tools that need time to initialize
+startupProbe:
+  enabled: true
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 20
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 12
+
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 30
+
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 10

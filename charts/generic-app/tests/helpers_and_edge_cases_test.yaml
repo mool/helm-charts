@@ -1,0 +1,126 @@
+suite: Helper Templates and Edge Cases
+templates:
+  - ../templates/deployment.yaml
+tests:
+  # Test helper template functions
+  - it: should generate correct app name with default release name
+    set:
+      appName: ""
+    release:
+      name: my-test-release
+    asserts:
+      - equal:
+          path: metadata.name
+          value: my-test-release
+
+  - it: should generate correct app name with custom appName
+    set:
+      appName: custom-app-name
+    release:
+      name: test-release
+    asserts:
+      - equal:
+          path: metadata.name
+          value: custom-app-name
+
+  # Test version handling edge cases
+  - it: should sanitize version strings with special characters
+    set:
+      image:
+        tag: "v1.2.3+build.123"
+      appVersion: ""
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/version"]
+          value: "v1.2.3-build.123"
+
+  - it: should use appVersion when image.tag is not set
+    set:
+      appVersion: "2.1.0"
+      image:
+        tag: ""
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/version"]
+          value: "2.1.0"
+
+  # Test conditional logic edge cases
+  - it: should handle empty podAnnotations gracefully
+    set:
+      podAnnotations: {}
+    asserts:
+      - notExists:
+          path: spec.template.metadata.annotations
+
+  - it: should handle empty imagePullSecrets
+    set:
+      imagePullSecrets: []
+    asserts:
+      - notExists:
+          path: spec.template.spec.imagePullSecrets
+
+  # Test volume mount edge cases
+  - it: should have empty volumes when configmap disabled
+    set:
+      configMap:
+        enabled: false
+        mountPath: "/etc/config"
+      volumeMounts: []
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes
+          value: []
+
+  # Test autoscaling interaction
+  - it: should not set replicas when autoscaling is enabled
+    set:
+      replicaCount: 5
+      autoscaling:
+        enabled: true
+    asserts:
+      - notExists:
+          path: spec.replicas
+
+  - it: should set replicas when autoscaling is disabled
+    set:
+      replicaCount: 3
+      autoscaling:
+        enabled: false
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3
+
+  # Test chart name generation edge case
+  - it: should replace plus signs in chart version for labels
+    chart:
+      name: generic-app
+      version: "1.0.0+build"
+    asserts:
+      - equal:
+          path: metadata.labels["helm.sh/chart"]
+          value: "generic-app-1.0.0_build"
+
+  # Test resource limits edge case - resources are set by default in values.yaml
+  - it: should apply default resource limits
+    asserts:
+      - exists:
+          path: spec.template.spec.containers[0].resources
+      - exists:
+          path: spec.template.spec.containers[0].resources.limits
+      - exists:
+          path: spec.template.spec.containers[0].resources.requests
+
+  # Test probe configurations
+  - it: should handle all probes being disabled
+    set:
+      livenessProbe: {}
+      readinessProbe: {}
+      startupProbe: {}
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].livenessProbe
+      - notExists:
+          path: spec.template.spec.containers[0].readinessProbe
+      - notExists:
+          path: spec.template.spec.containers[0].startupProbe

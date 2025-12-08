@@ -1,0 +1,128 @@
+# Full-featured homelab application (like a web app with all features enabled)
+# Demonstrates comprehensive configuration with ingress, HPA, monitoring, etc.
+
+image:
+  repository: wordpress
+  tag: "6.4-apache"
+
+nameOverride: "my-blog"
+
+service:
+  type: ClusterIP
+  port: 80
+
+# Enable ingress for external access
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: blog.homelab.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: blog-tls
+      hosts:
+        - blog.homelab.local
+
+# Enable autoscaling
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Production-ready resources
+resources:
+  limits:
+    cpu: 500m
+    memory: 1Gi
+  requests:
+    cpu: 200m
+    memory: 512Mi
+
+# Enable all security features
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  fsGroup: 10001
+  readOnlyRootFilesystem: true
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  runAsNonRoot: true
+  runAsUser: 10001
+
+# Configuration for the application
+configMap:
+  enabled: true
+  data:
+    WORDPRESS_DB_HOST: mysql-service
+    WORDPRESS_DB_NAME: blog_db
+    WORDPRESS_TABLE_PREFIX: wp_
+
+# Pod disruption budget for high availability
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Network policy for security
+networkPolicy:
+  enabled: true
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: ingress-nginx
+      ports:
+      - protocol: TCP
+        port: 8080
+  egress:
+    - to:
+      - namespaceSelector:
+          matchLabels:
+            name: mysql
+      ports:
+      - protocol: TCP
+        port: 3306
+    - to: []
+      ports:
+      - protocol: TCP
+        port: 53
+      - protocol: UDP
+        port: 53
+
+# Custom startup probe for complex apps
+startupProbe:
+  enabled: true
+  httpGet:
+    path: /wp-admin/install.php
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 10
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: 8080
+  initialDelaySeconds: 60
+  periodSeconds: 30
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 5
