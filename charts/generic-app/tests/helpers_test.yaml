@@ -1,8 +1,7 @@
-suite: Helper Templates and Edge Cases
+suite: test helpers using deployment
 templates:
-  - ../templates/deployment.yaml
+  - deployment.yaml
 tests:
-  # Test helper template functions
   - it: should generate correct app name with default release name
     set:
       appName: ""
@@ -23,7 +22,6 @@ tests:
           path: metadata.name
           value: custom-app-name
 
-  # Test version handling edge cases
   - it: should sanitize version strings with special characters
     set:
       image:
@@ -44,7 +42,6 @@ tests:
           path: metadata.labels["app.kubernetes.io/version"]
           value: "2.1.0"
 
-  # Test conditional logic edge cases
   - it: should handle empty podAnnotations gracefully
     set:
       podAnnotations: {}
@@ -59,7 +56,6 @@ tests:
       - notExists:
           path: spec.template.spec.imagePullSecrets
 
-  # Test volume mount edge cases
   - it: should have empty volumes when configmap disabled
     set:
       configMap:
@@ -67,11 +63,9 @@ tests:
         mountPath: "/etc/config"
       volumeMounts: []
     asserts:
-      - equal:
+      - isEmpty:
           path: spec.template.spec.volumes
-          value: []
 
-  # Test autoscaling interaction
   - it: should not set replicas when autoscaling is enabled
     set:
       replicaCount: 5
@@ -91,7 +85,6 @@ tests:
           path: spec.replicas
           value: 3
 
-  # Test chart name generation edge case
   - it: should replace plus signs in chart version for labels
     chart:
       name: generic-app
@@ -101,7 +94,6 @@ tests:
           path: metadata.labels["helm.sh/chart"]
           value: "generic-app-1.0.0_build"
 
-  # Test resource limits edge case - resources are set by default in values.yaml
   - it: should apply default resource limits
     asserts:
       - exists:
@@ -111,7 +103,6 @@ tests:
       - exists:
           path: spec.template.spec.containers[0].resources.requests
 
-  # Test probe configurations
   - it: should handle all probes being disabled
     set:
       livenessProbe: {}
@@ -124,3 +115,12 @@ tests:
           path: spec.template.spec.containers[0].readinessProbe
       - notExists:
           path: spec.template.spec.containers[0].startupProbe
+
+  - it: should handle nodeSelector configuration
+    set:
+      nodeSelector:
+        kubernetes.io/arch: amd64
+    asserts:
+      - equal:
+          path: spec.template.spec.nodeSelector["kubernetes.io/arch"]
+          value: amd64

@@ -108,9 +108,3 @@ clean:
 	@find . -name "*.tmp" -delete 2>/dev/null || true
 	@find . -name "*.test" -delete 2>/dev/null || true
 	@echo "$(GREEN)✓ Cleanup completed$(NC)"
-
-# Quick development test (most commonly used)
-quick: check-deps check-chart
-	@echo "$(YELLOW)Running quick development tests...$(NC)"
-	@helm unittest $(CHART_DIR)/ -f 'tests/deployment_test.yaml' -f 'tests/conditional_test.yaml'
-	@echo "$(GREEN)✓ Quick tests completed$(NC)"

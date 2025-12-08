@@ -1,0 +1,51 @@
+suite: HPA Tests
+templates:
+  - hpa.yaml
+tests:
+  # Basic HPA Tests
+  - it: should not create hpa when disabled (default)
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create hpa with CPU metrics
+    set:
+      autoscaling:
+        enabled: true
+        minReplicas: 2
+        maxReplicas: 10
+        targetCPUUtilizationPercentage: 70
+    asserts:
+      - isKind:
+          of: HorizontalPodAutoscaler
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME
+      - equal:
+          path: spec.minReplicas
+          value: 2
+      - equal:
+          path: spec.maxReplicas
+          value: 10
+      - equal:
+          path: spec.metrics[0].resource.target.averageUtilization
+          value: 70
+
+  - it: should create hpa with both CPU and memory metrics
+    set:
+      autoscaling:
+        enabled: true
+        minReplicas: 1
+        maxReplicas: 5
+        targetCPUUtilizationPercentage: 80
+        targetMemoryUtilizationPercentage: 70
+    asserts:
+      - lengthEqual:
+          path: spec.metrics
+          count: 2
+      - equal:
+          path: spec.metrics[0].resource.name
+          value: cpu
+      - equal:
+          path: spec.metrics[1].resource.name
+          value: memory

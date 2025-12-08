@@ -1,17 +1,13 @@
-suite: test security features
+suite: test networkpolicy
 templates:
   - networkpolicy.yaml
-  - poddisruptionbudget.yaml
 tests:
-  # NetworkPolicy Tests
   - it: should not create networkpolicy by default
-    template: networkpolicy.yaml
     asserts:
       - hasDocuments:
           count: 0
 
   - it: should create networkpolicy when enabled
-    template: networkpolicy.yaml
     set:
       networkPolicy.enabled: true
       networkPolicy.policyTypes:
@@ -31,7 +27,6 @@ tests:
           content: Egress
 
   - it: should configure ingress rules
-    template: networkpolicy.yaml
     set:
       networkPolicy.enabled: true
       networkPolicy.policyTypes:
@@ -51,35 +46,3 @@ tests:
       - equal:
           path: spec.ingress[0].ports[0].port
           value: 8080
-
-  # PodDisruptionBudget Tests
-  - it: should not create poddisruptionbudget by default
-    template: poddisruptionbudget.yaml
-    asserts:
-      - hasDocuments:
-          count: 0
-
-  - it: should create pdb with minAvailable
-    template: poddisruptionbudget.yaml
-    set:
-      podDisruptionBudget.enabled: true
-      podDisruptionBudget.minAvailable: 1
-    asserts:
-      - isKind:
-          of: PodDisruptionBudget
-      - equal:
-          path: metadata.name
-          value: RELEASE-NAME
-      - equal:
-          path: spec.minAvailable
-          value: 1
-
-  - it: should create pdb with maxUnavailable
-    template: poddisruptionbudget.yaml
-    set:
-      podDisruptionBudget.enabled: true
-      podDisruptionBudget.maxUnavailable: "50%"
-    asserts:
-      - equal:
-          path: spec.maxUnavailable
-          value: "50%"

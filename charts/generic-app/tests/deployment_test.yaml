@@ -1,0 +1,88 @@
+suite: Deployment Tests
+templates:
+  - deployment.yaml
+tests:
+  # Basic Deployment Tests
+  - it: should create deployment with default values
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME
+      - equal:
+          path: spec.replicas
+          value: 1
+
+  - it: should set correct image
+    set:
+      image.repository: nginx
+      image.tag: latest
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: nginx:latest
+
+  - it: should apply security context
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.runAsNonRoot
+          value: true
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+          value: false
+
+  # Autoscaling Interaction Tests
+  - it: should not set replicas when autoscaling is enabled
+    set:
+      replicaCount: 5
+      autoscaling:
+        enabled: true
+    asserts:
+      - notExists:
+          path: spec.replicas
+
+  - it: should set replicas when autoscaling is disabled
+    set:
+      replicaCount: 3
+      autoscaling:
+        enabled: false
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3
+
+  # Resource Configuration Tests
+  - it: should apply default resource limits
+    asserts:
+      - exists:
+          path: spec.template.spec.containers[0].resources
+      - exists:
+          path: spec.template.spec.containers[0].resources.limits
+      - exists:
+          path: spec.template.spec.containers[0].resources.requests
+
+  # Volume Mount Tests
+  - it: should have no volumes when configmap disabled
+    set:
+      configMap:
+        enabled: false
+        mountPath: "/etc/config"
+      volumeMounts: []
+    asserts:
+      - isEmpty:
+          path: spec.template.spec.volumes
+
+  # Probe Configuration Tests
+  - it: should handle all probes being disabled
+    set:
+      livenessProbe: {}
+      readinessProbe: {}
+      startupProbe: {}
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].livenessProbe
+      - notExists:
+          path: spec.template.spec.containers[0].readinessProbe
+      - notExists:
+          path: spec.template.spec.containers[0].startupProbe

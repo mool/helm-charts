@@ -1,0 +1,38 @@
+suite: test servicemonitor
+templates:
+  - servicemonitor.yaml
+tests:
+  - it: should not create servicemonitor by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create servicemonitor when enabled
+    set:
+      serviceMonitor.enabled: true
+    asserts:
+      - isKind:
+          of: ServiceMonitor
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME
+
+  - it: should configure endpoint settings
+    set:
+      serviceMonitor.enabled: true
+      serviceMonitor.path: "/metrics"
+      serviceMonitor.interval: "30s"
+      serviceMonitor.scrapeTimeout: "10s"
+    asserts:
+      - equal:
+          path: spec.endpoints[0].port
+          value: http
+      - equal:
+          path: spec.endpoints[0].path
+          value: "/metrics"
+      - equal:
+          path: spec.endpoints[0].interval
+          value: "30s"
+      - equal:
+          path: spec.endpoints[0].scrapeTimeout
+          value: "10s"
