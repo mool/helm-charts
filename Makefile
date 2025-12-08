@@ -28,64 +28,64 @@ help:
 # Check if helm-unittest plugin is installed
 check-deps:
 	@if ! helm plugin list | grep -q unittest; then \
-		echo "$(RED)Error: helm-unittest plugin not installed$(NC)"; \
+		printf "$(RED)Error: helm-unittest plugin not installed$(NC)\n"; \
 		echo "Please install it with: helm plugin install https://github.com/helm-unittest/helm-unittest.git"; \
 		exit 1; \
 	fi
-	@echo "$(GREEN)✓ helm-unittest plugin found$(NC)"
+	@printf "$(GREEN)✓ helm-unittest plugin found$(NC)\n"
 
 # Validate chart directory exists
 check-chart:
 	@if [ ! -d "$(CHART_DIR)" ]; then \
-		echo "$(RED)Error: Chart directory $(CHART_DIR) not found$(NC)"; \
+		printf "$(RED)Error: Chart directory $(CHART_DIR) not found$(NC)\n"; \
 		exit 1; \
 	fi
 	@if [ ! -f "$(CHART_DIR)/Chart.yaml" ]; then \
-		echo "$(RED)Error: Chart.yaml not found in $(CHART_DIR)$(NC)"; \
+		printf "$(RED)Error: Chart.yaml not found in $(CHART_DIR)$(NC)\n"; \
 		exit 1; \
 	fi
-	@echo "$(GREEN)✓ Chart directory validated$(NC)"
+	@printf "$(GREEN)✓ Chart directory validated$(NC)\n"
 
 # Run unit tests with default values
 test: check-deps check-chart test-unit
-	@echo "$(GREEN)✓ All tests completed successfully$(NC)"
+	@printf "$(GREEN)✓ All tests completed successfully$(NC)\n"
 
 # Run unit tests with default values
 test-unit: check-deps check-chart
-	@echo "$(YELLOW)Running unit tests with default values...$(NC)"
+	@printf "$(YELLOW)Running unit tests with default values...$(NC)\n"
 	@if helm unittest $(CHART_DIR)/; then \
-		echo "$(GREEN)✓ Unit tests passed$(NC)"; \
+		printf "$(GREEN)✓ Unit tests passed$(NC)\n"; \
 	else \
-		echo "$(RED)✗ Unit tests failed$(NC)"; \
+		printf "$(RED)✗ Unit tests failed$(NC)\n"; \
 		exit 1; \
 	fi
 
 # Run single test file
 test-single: check-deps check-chart
 	@if [ -z "$(FILE)" ]; then \
-		echo "$(RED)Error: FILE parameter required. Use: make test-single FILE=filename$(NC)"; \
+		printf "$(RED)Error: FILE parameter required. Use: make test-single FILE=filename$(NC)\n"; \
 		exit 1; \
 	fi
 	@if [ ! -f "$(CHART_DIR)/tests/$(FILE)" ]; then \
-		echo "$(RED)Error: Test file $(CHART_DIR)/tests/$(FILE) not found$(NC)"; \
+		printf "$(RED)Error: Test file $(CHART_DIR)/tests/$(FILE) not found$(NC)\n"; \
 		exit 1; \
 	fi
-	@echo "$(YELLOW)Running single test: $(FILE)$(NC)"
+	@printf "$(YELLOW)Running single test: $(FILE)$(NC)\n"
 	@helm unittest $(CHART_DIR)/ -f "tests/$(FILE)"
 
 # Lint charts
 lint:
-	@echo "$(YELLOW)Linting charts...$(NC)"
+	@printf "$(YELLOW)Linting charts...$(NC)\n"
 	@if helm lint charts/*/; then \
-		echo "$(GREEN)✓ Linting passed$(NC)"; \
+		printf "$(GREEN)✓ Linting passed$(NC)\n"; \
 	else \
-		echo "$(RED)✗ Linting failed$(NC)"; \
+		printf "$(RED)✗ Linting failed$(NC)\n"; \
 		exit 1; \
 	fi
 
 # Clean test artifacts
 clean:
-	@echo "$(YELLOW)Cleaning test artifacts...$(NC)"
+	@printf "$(YELLOW)Cleaning test artifacts...$(NC)\n"
 	@find . -name "*.tmp" -delete 2>/dev/null || true
 	@find . -name "*.test" -delete 2>/dev/null || true
-	@echo "$(GREEN)✓ Cleanup completed$(NC)"
+	@printf "$(GREEN)✓ Cleanup completed$(NC)\n"
