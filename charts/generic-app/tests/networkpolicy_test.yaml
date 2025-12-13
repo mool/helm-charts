@@ -1,0 +1,48 @@
+suite: test networkpolicy
+templates:
+  - networkpolicy.yaml
+tests:
+  - it: should not create networkpolicy by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create networkpolicy when enabled
+    set:
+      networkPolicy.enabled: true
+      networkPolicy.policyTypes:
+        - Ingress
+        - Egress
+    asserts:
+      - isKind:
+          of: NetworkPolicy
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME
+      - contains:
+          path: spec.policyTypes
+          content: Ingress
+      - contains:
+          path: spec.policyTypes
+          content: Egress
+
+  - it: should configure ingress rules
+    set:
+      networkPolicy.enabled: true
+      networkPolicy.policyTypes:
+        - Ingress
+      networkPolicy.ingress:
+        - from:
+          - namespaceSelector:
+              matchLabels:
+                name: ingress-nginx
+          ports:
+          - protocol: TCP
+            port: 8080
+    asserts:
+      - equal:
+          path: spec.ingress[0].from[0].namespaceSelector.matchLabels.name
+          value: ingress-nginx
+      - equal:
+          path: spec.ingress[0].ports[0].port
+          value: 8080
