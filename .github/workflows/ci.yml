@@ -1,0 +1,144 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  discover-charts:
+    runs-on: ubuntu-latest
+    outputs:
+      charts: ${{ steps.list-charts.outputs.charts }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "3.14.0"
+
+      - name: Discover charts
+        id: list-charts
+        run: |
+          # Use the same logic as Makefile to discover charts
+          CHARTS=$(find charts -maxdepth 2 -name "Chart.yaml" -type f | sed 's|/Chart.yaml||' | sed 's|charts/||' | sort | jq -R -s -c 'split("\n")[:-1]')
+          echo "charts=$CHARTS" >> $GITHUB_OUTPUT
+          echo "Discovered charts: $CHARTS"
+
+  lint-charts:
+    needs: discover-charts
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chart: ${{ fromJson(needs.discover-charts.outputs.charts) }}
+      fail-fast: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "3.14.0"
+
+      - name: Lint chart ${{ matrix.chart }}
+        run: |
+          echo "🔍 Linting chart: ${{ matrix.chart }}"
+          helm lint charts/${{ matrix.chart }}/
+
+      - name: Validate chart structure
+        run: |
+          echo "📋 Validating chart structure: ${{ matrix.chart }}"
+          # Check required files exist
+          if [ ! -f "charts/${{ matrix.chart }}/Chart.yaml" ]; then
+            echo "❌ Missing Chart.yaml"
+            exit 1
+          fi
+          if [ ! -f "charts/${{ matrix.chart }}/values.yaml" ]; then
+            echo "❌ Missing values.yaml"
+            exit 1
+          fi
+          if [ ! -d "charts/${{ matrix.chart }}/templates" ]; then
+            echo "❌ Missing templates directory"
+            exit 1
+          fi
+          echo "✅ Chart structure validation passed"
+
+  test-charts:
+    needs: discover-charts
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chart: ${{ fromJson(needs.discover-charts.outputs.charts) }}
+      fail-fast: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "3.14.0"
+
+      - name: Install helm-unittest
+        run: |
+          helm plugin install https://github.com/helm-unittest/helm-unittest.git
+
+      - name: Check if tests exist
+        id: check-tests
+        run: |
+          if [ -d "charts/${{ matrix.chart }}/tests" ] && [ "$(find charts/${{ matrix.chart }}/tests -name '*test*.yaml' | wc -l)" -gt 0 ]; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+            echo "✅ Found tests for ${{ matrix.chart }}"
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+            echo "⚠️  No tests found for ${{ matrix.chart }}"
+          fi
+
+      - name: Run unit tests for ${{ matrix.chart }}
+        if: steps.check-tests.outputs.has_tests == 'true'
+        run: |
+          echo "🧪 Running unit tests for: ${{ matrix.chart }}"
+          helm unittest charts/${{ matrix.chart }}/
+
+      - name: Skip tests for ${{ matrix.chart }}
+        if: steps.check-tests.outputs.has_tests == 'false'
+        run: |
+          echo "⏭️ Skipping tests for ${{ matrix.chart }} (no tests found)"
+
+  ci-summary:
+    needs: [lint-charts, test-charts]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: CI Summary
+        run: |
+          echo "## 🎯 CI Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.lint-charts.result }}" == "success" ]; then
+            echo "✅ **Lint Charts**: All charts passed linting" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Lint Charts**: Some charts failed linting" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.test-charts.result }}" == "success" ]; then
+            echo "✅ **Test Charts**: All chart tests passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Test Charts**: Some chart tests failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Fail the job if any of the required jobs failed
+          if [ "${{ needs.lint-charts.result }}" != "success" ] || \
+             [ "${{ needs.test-charts.result }}" != "success" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Overall Result**: CI pipeline failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **Overall Result**: CI pipeline passed" >> $GITHUB_STEP_SUMMARY
+          fi

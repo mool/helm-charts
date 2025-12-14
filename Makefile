@@ -8,7 +8,7 @@ CHARTS := $(shell find charts -maxdepth 2 -name "Chart.yaml" -type f | sed 's|/C
 CHART ?=
 CHART_DIR = $(if $(CHART),charts/$(CHART),)
 
-.PHONY: test test-unit test-single lint help clean list-charts validate-charts
+.PHONY: test test-unit test-single lint help clean list-charts validate-charts ci-lint ci-test ci-all list-charts-json
 
 # Colors for output
 GREEN := \033[32m
@@ -27,6 +27,12 @@ help:
 	@echo "  validate-charts   - Validate all charts have proper structure"
 	@echo "  clean             - Clean test artifacts"
 	@echo ""
+	@echo "CI Targets:"
+	@echo "  ci-lint           - CI-friendly lint (silent, proper exit codes)"
+	@echo "  ci-test           - CI-friendly test (silent, proper exit codes)"
+	@echo "  ci-all            - Run complete CI pipeline locally"
+	@echo "  list-charts-json  - Output charts in JSON format (for GitHub Actions)"
+	@echo ""
 	@echo "Chart Selection:"
 	@echo "  CHART=name        - Target specific chart (e.g., CHART=generic-app)"
 	@echo ""
@@ -36,6 +42,7 @@ help:
 	@echo "  make test-single CHART=generic-app FILE=deployment_test.yaml"
 	@echo "  make lint CHART=generic-app                    # Lint specific chart"
 	@echo "  make list-charts                               # Show available charts"
+	@echo "  make ci-all                                    # Run complete CI pipeline locally"
 	@echo ""
 	@echo "Note: When CHART is not specified, operations run on all discovered charts."
 
@@ -226,3 +233,81 @@ clean:
 	@find . -name "*.tmp" -delete 2>/dev/null || true
 	@find . -name "*.test" -delete 2>/dev/null || true
 	@printf "$(GREEN)✓ Cleanup completed$(NC)\n"
+
+# =============================================================================
+# CI-Friendly Targets (designed for GitHub Actions)
+# =============================================================================
+
+# CI-friendly lint with silent output and proper exit codes
+ci-lint: check-charts-exist
+ifeq ($(CHART),)
+	@echo "Running CI lint for all charts..."
+	@failed_charts=""; \
+	for chart in $(CHARTS); do \
+		echo "Linting chart: $$chart"; \
+		if helm lint charts/$$chart/ > /dev/null 2>&1; then \
+			echo "✓ $$chart linting passed"; \
+		else \
+			echo "✗ $$chart linting failed"; \
+			helm lint charts/$$chart/; \
+			failed_charts="$$failed_charts $$chart"; \
+		fi; \
+	done; \
+	if [ -n "$$failed_charts" ]; then \
+		echo "Failed charts:$$failed_charts"; \
+		exit 1; \
+	fi
+	@echo "✓ All charts linted successfully"
+else
+	$(MAKE) check-chart
+	@echo "Running CI lint for chart: $(CHART)"
+	@helm lint charts/$(CHART)/
+	@echo "✓ $(CHART) linting passed"
+endif
+
+# CI-friendly test with silent output and proper exit codes
+ci-test: check-deps check-charts-exist
+ifeq ($(CHART),)
+	@echo "Running CI tests for all charts..."
+	@failed_charts=""; \
+	for chart in $(CHARTS); do \
+		echo "Testing chart: $$chart"; \
+		if [ -d "charts/$$chart/tests" ] && [ "$$(find charts/$$chart/tests -name '*test*.yaml' | wc -l)" -gt 0 ]; then \
+			if helm unittest charts/$$chart/ > /dev/null 2>&1; then \
+				echo "✓ $$chart tests passed"; \
+			else \
+				echo "✗ $$chart tests failed"; \
+				helm unittest charts/$$chart/; \
+				failed_charts="$$failed_charts $$chart"; \
+			fi; \
+		else \
+			echo "⚠ $$chart has no tests, skipping"; \
+		fi; \
+	done; \
+	if [ -n "$$failed_charts" ]; then \
+		echo "Failed charts:$$failed_charts"; \
+		exit 1; \
+	fi
+	@echo "✓ All chart tests completed successfully"
+else
+	$(MAKE) check-chart
+	@echo "Running CI tests for chart: $(CHART)"
+	@if [ -d "charts/$(CHART)/tests" ] && [ "$$(find charts/$(CHART)/tests -name '*test*.yaml' | wc -l)" -gt 0 ]; then \
+		helm unittest charts/$(CHART)/; \
+		echo "✓ $(CHART) tests passed"; \
+	else \
+		echo "⚠ $(CHART) has no tests, skipping"; \
+	fi
+endif
+
+ci-all: ci-lint ci-test
+	@echo ""
+	@echo "🎉 Complete CI pipeline passed! All checks successful:"
+	@echo "   ✓ Linting"
+	@echo "   ✓ Unit Testing"
+	@echo ""
+	@echo "Your changes are ready for GitHub Actions CI! 🚀"
+
+# Output chart names in JSON format for GitHub Actions matrix
+list-charts-json:
+	@echo $(CHARTS) | tr ' ' '\n' | jq -R -s -c 'split("\n")[:-1]'
