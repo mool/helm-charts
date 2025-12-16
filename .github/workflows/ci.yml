@@ -58,7 +58,7 @@ jobs:
 
       - name: Install helm-unittest
         run: |
-          helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v1.0.3
+          helm plugin install https://github.com/helm-unittest/helm-unittest.git
 
       - name: Lint charts with comprehensive validation
         run: |
