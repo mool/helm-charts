@@ -26,6 +26,12 @@ jobs:
         run: |
           helm plugin install https://github.com/helm-unittest/helm-unittest.git --verify=false
 
-      - name: Lint charts with comprehensive validation
+      - name: Lint charts (Pull Request)
+        if: github.event_name == 'pull_request'
         run: |
           ct lint --config ct.yaml --github-groups
+
+      - name: Lint charts (Push)
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        run: |
+          ct lint --config ct.yaml --github-groups --all
