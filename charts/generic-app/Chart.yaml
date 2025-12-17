@@ -2,7 +2,7 @@ apiVersion: v2
 name: generic-app
 description: A generic Helm chart for deploying applications in Kubernetes.
 type: application
-version: 0.2.0
+version: 0.2.1
 appVersion: "1.0.0"
 home: https://github.com/mool/helm-charts
 sources:

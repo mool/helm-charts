@@ -1,0 +1,39 @@
+fail_fast: false # Continue running hooks even if one fails
+
+repos:
+  # Pre-commit hooks from official repository
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        name: Trim Trailing Whitespace
+        description: Trims trailing whitespace
+
+      - id: end-of-file-fixer
+        name: Fix End of Files
+        description: Ensures files end with a newline
+
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+        description: Check for files that contain merge conflict strings
+
+      - id: check-added-large-files
+        name: Check for added large files
+        description: Prevent giant files from being committed
+        args: ["--maxkb=1024"] # 1MB limit
+
+      - id: mixed-line-ending
+        name: Mixed line ending
+        description: Replaces or checks mixed line endings
+        args: ["--fix=lf"]
+
+  # Add a final hook to run our CI validation
+  - repo: local
+    hooks:
+      - id: test-updated-charts
+        name: Test Updated Charts
+        language: system
+        entry: make
+        args: [test-changed]
+        pass_filenames: false
+        description: Run tests on updated charts
