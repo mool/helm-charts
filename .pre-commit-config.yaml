@@ -30,11 +30,10 @@ repos:
   # Add a final hook to run our CI validation
   - repo: local
     hooks:
-      - id: makefile-ci-check
-        name: Makefile CI Check
-        entry: make
+      - id: test-updated-charts
+        name: Test Updated Charts
         language: system
-        args: [ci-lint]
+        entry: make
+        args: [test-changed]
         pass_filenames: false
-        stages: [pre-push] # Only run on pre-push, not pre-commit
-        description: Run full CI lint check before pushing
+        description: Run tests on updated charts
