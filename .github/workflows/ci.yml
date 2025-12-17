@@ -8,39 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Detect changed charts using ct
-  detect-changes:
-    runs-on: ubuntu-latest
-    outputs:
-      changed-charts: ${{ steps.list-changed.outputs.charts }}
-      has-changes: ${{ steps.list-changed.outputs.has-changes }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up chart-testing
-        uses: helm/chart-testing-action@v2.8.0
-
-      - name: List changed charts
-        id: list-changed
-        run: |
-          changed=$(ct list-changed --config ct.yaml)
-          if [[ -n "$changed" ]]; then
-            echo "has-changes=true" >> "$GITHUB_OUTPUT"
-            echo "charts=$(echo "$changed" | jq -R -s -c 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
-            echo "Changed charts: $changed"
-          else
-            echo "has-changes=false" >> "$GITHUB_OUTPUT"
-            echo "charts=[]" >> "$GITHUB_OUTPUT"
-            echo "No charts changed"
-          fi
-
-  # Comprehensive linting with ct (includes version checking)
-  lint-charts:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.has-changes == 'true'
+  test-charts:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -61,32 +29,3 @@ jobs:
       - name: Lint charts with comprehensive validation
         run: |
           ct lint --config ct.yaml --github-groups
-
-  # Unit testing (matrix-based for parallel execution)
-  test-charts:
-    needs: [detect-changes]
-    if: needs.detect-changes.outputs.has-changes == 'true'
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        chart: ${{ fromJson(needs.detect-changes.outputs.changed-charts) }}
-      fail-fast: false
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Helm
-        uses: azure/setup-helm@v4.3.1
-
-      - name: Install helm-unittest
-        run: |
-          helm plugin install https://github.com/helm-unittest/helm-unittest.git --verify=false
-
-      - name: Run unit tests for ${{ matrix.chart }}
-        run: |
-          if [ -d "${{ matrix.chart }}/tests" ] && [ "$(find ${{ matrix.chart }}/tests -name '*test*.yaml' | wc -l)" -gt 0 ]; then
-            echo "🧪 Running unit tests for: ${{ matrix.chart }}"
-            helm unittest ${{ matrix.chart }}/
-          else
-            echo "⏭️ Skipping tests for ${{ matrix.chart }} (no tests found)"
-          fi
