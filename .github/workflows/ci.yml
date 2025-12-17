@@ -84,9 +84,9 @@ jobs:
 
       - name: Run unit tests for ${{ matrix.chart }}
         run: |
-          if [ -d "charts/${{ matrix.chart }}/tests" ] && [ "$(find charts/${{ matrix.chart }}/tests -name '*test*.yaml' | wc -l)" -gt 0 ]; then
+          if [ -d "${{ matrix.chart }}/tests" ] && [ "$(find ${{ matrix.chart }}/tests -name '*test*.yaml' | wc -l)" -gt 0 ]; then
             echo "🧪 Running unit tests for: ${{ matrix.chart }}"
-            helm unittest charts/${{ matrix.chart }}/
+            helm unittest ${{ matrix.chart }}/
           else
             echo "⏭️ Skipping tests for ${{ matrix.chart }} (no tests found)"
           fi
