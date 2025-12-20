@@ -119,7 +119,7 @@ service:
     # -- Creates an additional headless service (clusterIP: None) for stable network identity
     enabled: false
     # Port for the headless service (defaults to containerPort if not set)
-    port: ""
+    port: null
 
 # -- Container port configuration
 containerPort: 8080
@@ -277,7 +277,15 @@ networkPolicy:
 podDisruptionBudget:
   # -- Enable PodDisruptionBudget creation
   enabled: false
-  # -- Maximum number of pods that can be unavailable
+  # -- Maximum number of pods that can be unavailable during voluntary disruptions.
+  # Set either maxUnavailable or minAvailable, but not both.
+  # Examples:
+  #   maxUnavailable: 1        # allow 1 pod to be unavailable
+  #   maxUnavailable: "25%"    # allow 25% of pods to be unavailable
   maxUnavailable:
-  # -- Minimum number of pods that must remain available
+  # -- Minimum number of pods that must remain available during voluntary disruptions.
+  # Set either maxUnavailable or minAvailable, but not both.
+  # Examples:
+  #   minAvailable: 1          # at least 1 pod must be available
+  #   minAvailable: "50%"      # at least 50% of pods must be available
   minAvailable:

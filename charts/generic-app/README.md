@@ -424,8 +424,8 @@ To customize security settings, override the `podSecurityContext` and `securityC
 | networkPolicy.policyTypes | list | `["Ingress","Egress"]` | Policy types to enforce |
 | podAnnotations | object | `{}` | This is for setting Kubernetes Annotations to a Pod. For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/ |
 | podDisruptionBudget.enabled | bool | `false` | Enable PodDisruptionBudget creation |
-| podDisruptionBudget.maxUnavailable | string | `nil` | Maximum number of pods that can be unavailable |
-| podDisruptionBudget.minAvailable | string | `nil` | Minimum number of pods that must remain available |
+| podDisruptionBudget.maxUnavailable | string | `nil` | Maximum number of pods that can be unavailable during voluntary disruptions. Set either maxUnavailable or minAvailable, but not both. Examples:   maxUnavailable: 1        # allow 1 pod to be unavailable   maxUnavailable: "25%"    # allow 25% of pods to be unavailable |
+| podDisruptionBudget.minAvailable | string | `nil` | Minimum number of pods that must remain available during voluntary disruptions. Set either maxUnavailable or minAvailable, but not both. Examples:   minAvailable: 1          # at least 1 pod must be available   minAvailable: "50%"      # at least 50% of pods must be available |
 | podLabels | object | `{}` | This is for setting Kubernetes Labels to a Pod. For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ |
 | readinessProbe | object | `{}` | This is to setup the readiness probe. |
 | replicaCount | int | `1` | This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/ |
