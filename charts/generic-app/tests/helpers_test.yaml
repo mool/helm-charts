@@ -26,21 +26,10 @@ tests:
     set:
       image:
         tag: "v1.2.3+build.123"
-      appVersion: ""
     asserts:
       - equal:
           path: metadata.labels["app.kubernetes.io/version"]
           value: "v1.2.3-build.123"
-
-  - it: should use appVersion when image.tag is not set
-    set:
-      appVersion: "2.1.0"
-      image:
-        tag: ""
-    asserts:
-      - equal:
-          path: metadata.labels["app.kubernetes.io/version"]
-          value: "2.1.0"
 
   - it: should handle empty podAnnotations gracefully
     set:

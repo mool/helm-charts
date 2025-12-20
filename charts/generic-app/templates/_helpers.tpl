@@ -9,7 +9,7 @@ Define the name of the application.
 Define the version of the application.
 */}}
 {{- define "app.version" -}}
-  {{- $version := default .Values.appVersion .Values.image.tag -}}
+  {{- $version := .Values.image.tag -}}
   {{- regexReplaceAll "[^a-zA-Z0-9_\\.\\-]" $version "-" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
