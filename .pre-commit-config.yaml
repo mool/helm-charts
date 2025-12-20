@@ -37,3 +37,11 @@ repos:
         args: [test-changed]
         pass_filenames: false
         description: Run tests on updated charts
+
+  - repo: https://github.com/norwoodj/helm-docs
+    rev: v1.14.2
+    hooks:
+      - id: helm-docs
+        args:
+          - --chart-search-root=charts
+          - --ignore-non-descriptions
