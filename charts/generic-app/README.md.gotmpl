@@ -1,0 +1,407 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+
+{{ template "chart.badgesSection" . }}
+
+{{ template "chart.description" . }}
+
+{{ template "chart.homepageLine" . }}
+
+{{ template "chart.maintainersSection" . }}
+
+{{ template "chart.sourcesSection" . }}
+
+{{ template "chart.requirementsSection" . }}
+
+## Features
+
+- **Flexible Workload Types**: Deploy as Deployment or StatefulSet
+- **Security-Hardened Defaults**: Non-root user, read-only filesystem, dropped capabilities, seccomp profiles
+- **ConfigMap Support**: Create and auto-mount configuration files
+- **Ingress Configuration**: Expose services with customizable ingress rules
+- **Horizontal Pod Autoscaling**: Scale based on CPU/memory utilization
+- **ServiceMonitor**: Prometheus monitoring integration out of the box
+- **NetworkPolicy**: Control pod network traffic for enhanced security
+- **PodDisruptionBudget**: Ensure high availability during disruptions
+- **Headless Service**: Support for StatefulSet DNS resolution
+
+## Prerequisites
+
+- Kubernetes 1.19+
+- Helm 3.x
+
+## Installation
+
+### Install from OCI Registry
+
+```bash
+helm install my-app oci://ghcr.io/mool/generic-app
+```
+
+### Install with Custom Values
+
+```bash
+helm install my-app oci://ghcr.io/mool/generic-app -f values.yaml
+```
+
+### Install with Inline Values
+
+```bash
+helm install my-app oci://ghcr.io/mool/generic-app \
+  --set image.repository=my-image \
+  --set image.tag=v1.0.0
+```
+
+## Examples
+
+### Basic Web Application
+
+Deploy a simple web application:
+
+```yaml
+# values-webapp.yaml
+appName: my-webapp
+
+image:
+  repository: nginx
+  tag: "1.25"
+
+replicaCount: 2
+
+service:
+  type: ClusterIP
+  port: 80
+
+containerPort: 80
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+```
+
+```bash
+helm install webapp oci://ghcr.io/mool/generic-app -f values-webapp.yaml
+```
+
+### StatefulSet with Persistent Storage
+
+Deploy a stateful application (e.g., database) with persistent volumes:
+
+```yaml
+# values-stateful.yaml
+appName: my-database
+
+workloadType: StatefulSet
+
+image:
+  repository: postgres
+  tag: "16"
+
+replicaCount: 3
+
+containerPort: 5432
+
+service:
+  type: ClusterIP
+  port: 5432
+  headless:
+    enabled: true
+
+statefulSet:
+  podManagementPolicy: OrderedReady
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: "standard"
+        resources:
+          requests:
+            storage: 10Gi
+
+volumeMounts:
+  - name: data
+    mountPath: /var/lib/postgresql/data
+
+# Adjust security context for postgres
+podSecurityContext:
+  runAsUser: 999
+  runAsGroup: 999
+  fsGroup: 999
+  runAsNonRoot: true
+
+securityContext:
+  runAsUser: 999
+  runAsGroup: 999
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false  # Postgres needs write access
+
+resources:
+  limits:
+    cpu: "1"
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+livenessProbe:
+  exec:
+    command:
+      - pg_isready
+      - -U
+      - postgres
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  exec:
+    command:
+      - pg_isready
+      - -U
+      - postgres
+  initialDelaySeconds: 5
+  periodSeconds: 5
+```
+
+```bash
+helm install database oci://ghcr.io/mool/generic-app -f values-stateful.yaml
+```
+
+### Production Setup with Ingress and Monitoring
+
+Deploy a production-ready application with TLS, ingress, and Prometheus monitoring:
+
+```yaml
+# values-production.yaml
+appName: api-service
+
+image:
+  repository: my-registry/api-service
+  tag: "v2.1.0"
+
+replicaCount: 3
+
+containerPort: 8080
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+  hosts:
+    - host: api.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: api-tls
+      hosts:
+        - api.example.com
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+serviceMonitor:
+  enabled: true
+  interval: 15s
+  path: /metrics
+  labels:
+    release: prometheus
+
+livenessProbe:
+  httpGet:
+    path: /health/live
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 20
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health/ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+configMap:
+  enabled: true
+  mountPath: /app/config
+  data:
+    config.yaml: |
+      server:
+        port: 8080
+        readTimeout: 30s
+        writeTimeout: 30s
+      logging:
+        level: info
+        format: json
+```
+
+```bash
+helm install api oci://ghcr.io/mool/generic-app -f values-production.yaml
+```
+
+### Security-Hardened Deployment
+
+Deploy with maximum security restrictions:
+
+```yaml
+# values-secure.yaml
+appName: secure-app
+
+image:
+  repository: my-registry/secure-app
+  tag: "v1.0.0"
+  pullPolicy: Always
+
+replicaCount: 2
+
+containerPort: 8443
+
+serviceAccount:
+  create: true
+  automount: false
+
+podSecurityContext:
+  runAsUser: 10001
+  runAsGroup: 10001
+  runAsNonRoot: true
+  fsGroup: 10001
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  seccompProfile:
+    type: RuntimeDefault
+
+networkPolicy:
+  enabled: true
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: frontend
+      ports:
+        - protocol: TCP
+          port: 8443
+  egress:
+    # DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+    # Database access
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: database
+      ports:
+        - protocol: TCP
+          port: 5432
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+    ephemeral-storage: 100Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+    ephemeral-storage: 100Mi
+
+# Mount a tmpdir for applications that need write access
+volumes:
+  - name: tmp
+    emptyDir:
+      sizeLimit: 10Mi
+
+volumeMounts:
+  - name: tmp
+    mountPath: /tmp
+```
+
+```bash
+helm install secure-app oci://ghcr.io/mool/generic-app -f values-secure.yaml
+```
+
+## Security Defaults
+
+This chart is designed with security-first defaults:
+
+- **Non-root execution**: Containers run as user/group `10001` by default
+- **Read-only root filesystem**: Prevents runtime modifications to the container filesystem
+- **Dropped capabilities**: All Linux capabilities are dropped by default
+- **No privilege escalation**: `allowPrivilegeEscalation` is set to `false`
+- **Seccomp profile**: Uses `RuntimeDefault` seccomp profile
+- **Resource limits**: Default CPU, memory, and ephemeral storage limits are set
+- **Service account**: Auto-mounting of service account tokens is disabled by default
+
+To customize security settings, override the `podSecurityContext` and `securityContext` values as needed.
+
+{{ template "chart.valuesSection" . }}
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](../../LICENSE) file for details.
+
+{{ template "helm-docs.versionFooter" . }}
