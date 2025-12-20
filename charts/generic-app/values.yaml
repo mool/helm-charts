@@ -9,6 +9,40 @@ appVersion: ""
 # https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
 replicaCount: 1
 
+# Workload type: "Deployment" or "StatefulSet"
+# For more information see:
+# - Deployments: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+# - StatefulSets: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/
+workloadType: Deployment
+
+# StatefulSet-specific configuration (only used when workloadType is "StatefulSet")
+statefulSet:
+  # Pod management policy: OrderedReady or Parallel
+  # OrderedReady: Pods are created/terminated in order (default StatefulSet behavior)
+  # Parallel: Pods are created/terminated in parallel
+  podManagementPolicy: OrderedReady
+  # Service name for the StatefulSet (defaults to headless service name or app name)
+  # This must match a headless service for proper DNS resolution
+  serviceName: ""
+  # Update strategy for StatefulSet
+  updateStrategy:
+    type: RollingUpdate
+    # rollingUpdate:
+    #   partition: 0
+  # Volume claim templates for persistent storage
+  # Each pod in the StatefulSet will get its own PVC
+  volumeClaimTemplates: []
+  # Example:
+  # volumeClaimTemplates:
+  #   - metadata:
+  #       name: data
+  #     spec:
+  #       accessModes: ["ReadWriteOnce"]
+  #       storageClassName: "standard"
+  #       resources:
+  #         requests:
+  #           storage: 1Gi
+
 # This sets the container image more information can be found here:
 # https://kubernetes.io/docs/concepts/containers/images/
 image:
@@ -81,6 +115,12 @@ service:
   # This sets the ports more information can be found here:
   # https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
   port: 80
+  # Headless service configuration (commonly used with StatefulSets)
+  # Creates an additional headless service (clusterIP: None) for stable network identity
+  headless:
+    enabled: false
+    # Port for the headless service (defaults to containerPort if not set)
+    port: ""
 
 # Container port configuration
 containerPort: 8080

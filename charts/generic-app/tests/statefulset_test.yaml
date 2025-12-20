@@ -1,0 +1,166 @@
+suite: StatefulSet Tests
+templates:
+  - statefulset.yaml
+tests:
+  # Workload Type Conditional Tests
+  - it: should not create StatefulSet when workloadType is Deployment
+    set:
+      workloadType: Deployment
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create StatefulSet when workloadType is StatefulSet
+    set:
+      workloadType: StatefulSet
+    asserts:
+      - isKind:
+          of: StatefulSet
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME
+
+  # Pod Management Policy Tests
+  - it: should set default podManagementPolicy to OrderedReady
+    set:
+      workloadType: StatefulSet
+    asserts:
+      - equal:
+          path: spec.podManagementPolicy
+          value: OrderedReady
+
+  - it: should set podManagementPolicy to Parallel when configured
+    set:
+      workloadType: StatefulSet
+      statefulSet:
+        podManagementPolicy: Parallel
+    asserts:
+      - equal:
+          path: spec.podManagementPolicy
+          value: Parallel
+
+  # Service Name Tests
+  - it: should default serviceName to app name
+    set:
+      workloadType: StatefulSet
+    asserts:
+      - equal:
+          path: spec.serviceName
+          value: RELEASE-NAME
+
+  - it: should use headless service name when headless service is enabled
+    set:
+      workloadType: StatefulSet
+      service:
+        headless:
+          enabled: true
+    asserts:
+      - equal:
+          path: spec.serviceName
+          value: RELEASE-NAME-headless
+
+  - it: should use custom serviceName when provided
+    set:
+      workloadType: StatefulSet
+      statefulSet:
+        serviceName: my-headless-service
+    asserts:
+      - equal:
+          path: spec.serviceName
+          value: my-headless-service
+
+  # Update Strategy Tests
+  - it: should set default updateStrategy to RollingUpdate
+    set:
+      workloadType: StatefulSet
+    asserts:
+      - equal:
+          path: spec.updateStrategy.type
+          value: RollingUpdate
+
+  - it: should set updateStrategy to OnDelete when configured
+    set:
+      workloadType: StatefulSet
+      statefulSet:
+        updateStrategy:
+          type: OnDelete
+    asserts:
+      - equal:
+          path: spec.updateStrategy.type
+          value: OnDelete
+
+  # Volume Claim Templates Tests
+  - it: should not have volumeClaimTemplates by default
+    set:
+      workloadType: StatefulSet
+    asserts:
+      - notExists:
+          path: spec.volumeClaimTemplates
+
+  - it: should configure volumeClaimTemplates when provided
+    set:
+      workloadType: StatefulSet
+      statefulSet:
+        volumeClaimTemplates:
+          - metadata:
+              name: data
+            spec:
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 1Gi
+    asserts:
+      - equal:
+          path: spec.volumeClaimTemplates[0].metadata.name
+          value: data
+      - equal:
+          path: spec.volumeClaimTemplates[0].spec.accessModes[0]
+          value: ReadWriteOnce
+      - equal:
+          path: spec.volumeClaimTemplates[0].spec.resources.requests.storage
+          value: 1Gi
+
+  # Replicas Tests
+  - it: should set replicas when autoscaling is disabled
+    set:
+      workloadType: StatefulSet
+      replicaCount: 3
+      autoscaling:
+        enabled: false
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3
+
+  - it: should not set replicas when autoscaling is enabled
+    set:
+      workloadType: StatefulSet
+      autoscaling:
+        enabled: true
+    asserts:
+      - notExists:
+          path: spec.replicas
+
+  # Security Context Tests
+  - it: should apply security context
+    set:
+      workloadType: StatefulSet
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.runAsNonRoot
+          value: true
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+          value: false
+
+  # Image Tests
+  - it: should set correct image
+    set:
+      workloadType: StatefulSet
+      image:
+        repository: nginx
+        tag: latest
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: nginx:latest
