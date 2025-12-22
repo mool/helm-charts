@@ -4,9 +4,9 @@ Personal collection of Helm charts for homelab.
 
 ## Available Charts
 
-| Chart                                | Version | Description                                      |
-| ------------------------------------ | ------- | ------------------------------------------------ |
-| [generic-app](./charts/generic-app/) | 0.3.0   | A flexible Helm chart for deploying applications |
+| Chart                                | Description                                      |
+| ------------------------------------ | ------------------------------------------------ |
+| [generic-app](./charts/generic-app/) | A flexible Helm chart for deploying applications |
 
 ## Development
 
