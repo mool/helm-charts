@@ -1,6 +1,6 @@
 # Helm Charts
 
-Personal collection of Helm charts for Kubernetes deployments.
+Personal collection of Helm charts for homelab.
 
 ## Available Charts
 
