@@ -1,0 +1,85 @@
+suite: Extra Manifests Tests
+templates:
+  - extra-manifests.yaml
+tests:
+  - it: should not render extra manifests by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render every manifest defined in extraManifests
+    set:
+      extraManifests:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: app-secret
+          type: Opaque
+          stringData:
+            username: admin
+        - apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: app-settings
+          data:
+            featureFlag: "enabled"
+    asserts:
+      - hasDocuments:
+          count: 2
+      - isKind:
+          of: Secret
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: app-secret
+        documentIndex: 0
+      - isKind:
+          of: ConfigMap
+        documentIndex: 1
+      - equal:
+          path: metadata.name
+          value: app-settings
+        documentIndex: 1
+
+  - it: should render templated values inside extra manifests
+    set:
+      appName: demo-app
+      extraManifests:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: '{{ include "app.name" . }}-credentials'
+          type: Opaque
+          stringData:
+            release: '{{ .Release.Name }}'
+    release:
+      name: demo-release
+    asserts:
+      - equal:
+          path: metadata.name
+          value: demo-app-credentials
+      - equal:
+          path: stringData.release
+          value: demo-release
+
+  - it: should render raw yaml string manifests
+    set:
+      extraManifests:
+        - |
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: '{{ .Release.Name }}-raw'
+          data:
+            mode: string
+    release:
+      name: demo-release
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: demo-release-raw
+      - equal:
+          path: data.mode
+          value: string

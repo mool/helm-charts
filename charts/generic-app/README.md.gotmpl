@@ -24,6 +24,7 @@
 - **NetworkPolicy**: Control pod network traffic for enhanced security
 - **PodDisruptionBudget**: Ensure high availability during disruptions
 - **Headless Service**: Support for StatefulSet DNS resolution
+- **Extra Manifests**: Render arbitrary additional Kubernetes resources from values
 
 ## Prerequisites
 
@@ -168,6 +169,42 @@ resources:
 
 ```bash
 helm install database oci://ghcr.io/mool/generic-app -f values-stateful.yaml
+```
+
+### Extra Manifests
+
+Render additional resources that are not modeled directly by the chart:
+
+```yaml
+# values-extra-manifests.yaml
+extraManifests:
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: '{{ "{{ include \"app.name\" . }}" }}-credentials'
+    type: Opaque
+    stringData:
+      username: admin
+      password: '{{ "{{ .Release.Name }}" }}-password'
+  - apiVersion: external-secrets.io/v1beta1
+    kind: ExternalSecret
+    metadata:
+      name: '{{ "{{ include \"app.name\" . }}" }}'
+    spec:
+      refreshInterval: 1h
+      secretStoreRef:
+        kind: ClusterSecretStore
+        name: vault
+      target:
+        name: '{{ "{{ include \"app.name\" . }}" }}-credentials'
+      data:
+        - secretKey: password
+          remoteRef:
+            key: apps/{{ "{{ .Release.Name }}" }}/password
+```
+
+```bash
+helm install my-app oci://ghcr.io/mool/generic-app -f values-extra-manifests.yaml
 ```
 
 ## Security Defaults

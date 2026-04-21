@@ -1,0 +1,10 @@
+{{- range $index, $manifest := .Values.extraManifests }}
+{{- if gt $index 0 }}
+---
+{{- end }}
+{{- if kindIs "string" $manifest }}
+{{ tpl $manifest $ }}
+{{- else }}
+{{ tpl (toYaml $manifest) $ }}
+{{- end }}
+{{- end }}

@@ -1,6 +1,6 @@
 # generic-app
 
-![Version: 0.3.1](https://img.shields.io/badge/Version-0.3.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
+![Version: 0.3.2](https://img.shields.io/badge/Version-0.3.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
 
 A generic Helm chart for deploying applications in Kubernetes. This chart
 provides a flexible, security-hardened foundation for deploying both
@@ -30,6 +30,7 @@ customization options.
 - **NetworkPolicy**: Control pod network traffic for enhanced security
 - **PodDisruptionBudget**: Ensure high availability during disruptions
 - **Headless Service**: Support for StatefulSet DNS resolution
+- **Extra Manifests**: Render arbitrary additional Kubernetes resources from values
 
 ## Prerequisites
 
@@ -176,6 +177,42 @@ resources:
 helm install database oci://ghcr.io/mool/generic-app -f values-stateful.yaml
 ```
 
+### Extra Manifests
+
+Render additional resources that are not modeled directly by the chart:
+
+```yaml
+# values-extra-manifests.yaml
+extraManifests:
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: '{{ include "app.name" . }}-credentials'
+    type: Opaque
+    stringData:
+      username: admin
+      password: '{{ .Release.Name }}-password'
+  - apiVersion: external-secrets.io/v1beta1
+    kind: ExternalSecret
+    metadata:
+      name: '{{ include "app.name" . }}'
+    spec:
+      refreshInterval: 1h
+      secretStoreRef:
+        kind: ClusterSecretStore
+        name: vault
+      target:
+        name: '{{ include "app.name" . }}-credentials'
+      data:
+        - secretKey: password
+          remoteRef:
+            key: apps/{{ .Release.Name }}/password
+```
+
+```bash
+helm install my-app oci://ghcr.io/mool/generic-app -f values-extra-manifests.yaml
+```
+
 ## Security Defaults
 
 This chart is designed with security-first defaults:
@@ -198,6 +235,7 @@ To customize security settings, override the `podSecurityContext` and `securityC
 | autoscaling | object | `{"enabled":false,"maxReplicas":10,"minReplicas":1,"targetCPUUtilizationPercentage":80}` | This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/ |
 | configMap | object | `{"data":{},"enabled":false,"mountPath":"","volumeName":"config"}` | ConfigMap configuration - creates a ConfigMap with specified data |
 | containerPort | int | `8080` | Container port configuration |
+| extraManifests | list | `[]` | Additional arbitrary manifests to render alongside the chart resources. Each item may be a Kubernetes object map or a raw YAML string, and is rendered through tpl so you can reference .Values, .Release, and named templates. Example: extraManifests:   - apiVersion: v1     kind: Secret     metadata:       name: "{{ include \"app.name\" . }}-extra"     type: Opaque     stringData:       token: "{{ .Release.Name }}" |
 | image.pullPolicy | string | `"IfNotPresent"` | This sets the pull policy for images. |
 | image.repository | string | `"nginx"` | The image repository name. |
 | image.tag | string | `""` | The image tag. |
