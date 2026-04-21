@@ -289,3 +289,17 @@ podDisruptionBudget:
   #   minAvailable: 1          # at least 1 pod must be available
   #   minAvailable: "50%"      # at least 50% of pods must be available
   minAvailable:
+
+# -- Additional arbitrary manifests to render alongside the chart resources.
+# Each item may be a Kubernetes object map or a raw YAML string, and is rendered
+# through tpl so you can reference .Values, .Release, and named templates.
+# Example:
+# extraManifests:
+#   - apiVersion: v1
+#     kind: Secret
+#     metadata:
+#       name: "{{ include \"app.name\" . }}-extra"
+#     type: Opaque
+#     stringData:
+#       token: "{{ .Release.Name }}"
+extraManifests: []
